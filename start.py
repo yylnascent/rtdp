@@ -29,7 +29,7 @@ df = pd.read_sql(sql, con=conn)
 
 conn.close()
 
-m = Prophet(changepoint_prior_scale=0.5)
+m = Prophet(changepoint_prior_scale=0.05)
 m.fit(df)
 
 future = m.make_future_dataframe(freq='5min', periods=288)
