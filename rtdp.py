@@ -42,7 +42,8 @@ def signal_handler(signum, loop):
 
 def fetch_timeout_handler(op_type, *args, **kwargs):
     if op_type == 'jsdb_intrusion':
-        fetch_data(*args, **kwargs)
+        log.debug('args: %s, kwargs: %s.' % (args, kwargs))
+        fetch_data(args[0])
 
 def forecast_timeout_handler(op_type, *args, **kwargs):
     if op_type == 'jsdb_intrusion':
@@ -63,7 +64,12 @@ if __name__ == "__main__":
         log.debug('sub dp %s' % sub_dp)
         sub_dp_conf = config.get(sub_dp)
         if sub_dp_conf and 'fetch_intervals' in sub_dp_conf and 'name' in sub_dp_conf:
-            timer_list.append(LoopTimer(int(sub_dp_conf['fetch_intervals']), functools.partial(fetch_timeout_handler, sub_dp_conf['name'], loop)))
+            kwargs = {'query_sql': sub_dp_conf['query_sql'], 'result_table': sub_dp_conf['result_table']}
+            timer_list.append(LoopTimer(int(sub_dp_conf['fetch_intervals']), 
+                functools.partial(fetch_timeout_handler, 
+                    sub_dp_conf['name'], 
+                    loop, 
+                    **kwargs)))
 
         if sub_dp_conf and 'forecast_intervals' in sub_dp_conf and 'name' in sub_dp_conf:
             timer_list.append(LoopTimer(int(sub_dp_conf['forecast_intervals']), functools.partial(forecast_timeout_handler, sub_dp_conf['name'], loop)))
