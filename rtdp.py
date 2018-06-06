@@ -1,23 +1,34 @@
 import asyncio
 import functools
+import inspect
 import logging
 import os
+import pkgutil
 import signal
 import sys
 import time
 
+from lib.common.abstracts import CompetitorIntrusion
+from lib.common.config import Config
 from lib.common.looptimer import LoopTimer
 from lib.core.init import init_logging
-from lib.common.config import Config
 
 log = logging.getLogger('main')
 
-def fetch_data(loop):
-    log.debug("read database begin")
-    time.sleep(1)
-    log.debug("read database end")
-    if not loop.is_closed():
-        loop.call_soon_threadsafe(save_data)
+def fetch_data(loop, **kwargs):
+    handle_module = kwargs['handle_module']
+    import modules.realtime_intrusion
+    package = modules.realtime_intrusion
+    prefix = package.__name__ + "."
+    for loader, name, ispkg in pkgutil.iter_modules(package.__path__, prefix):
+        log.debug(name)
+        if name.endswith(handle_module):
+            module = __import__(name, globals(), locals(), ["dummy"], 0)
+
+    for name, value in inspect.getmembers(module):
+        if inspect.isclass(value) and not inspect.isabstract(value) and issubclass(value, CompetitorIntrusion) and value is not CompetitorIntrusion:
+            log.debug("%s: %s."% (name, value))
+            value().fetch_data(loop, **kwargs)
 
 def save_data():
     log.debug("save database begin")
@@ -42,12 +53,11 @@ def signal_handler(signum, loop):
 
 def fetch_timeout_handler(op_type, *args, **kwargs):
     if op_type == 'jsdb_intrusion':
-        log.debug('args: %s, kwargs: %s.' % (args, kwargs))
-        fetch_data(args[0])
+        fetch_data(args[0], **kwargs)
 
 def forecast_timeout_handler(op_type, *args, **kwargs):
     if op_type == 'jsdb_intrusion':
-        forecast(*args, **kwargs)
+        forecast(args[0], **kwargs)
 
 
 if __name__ == "__main__":
@@ -64,13 +74,8 @@ if __name__ == "__main__":
         log.debug('sub dp %s' % sub_dp)
         sub_dp_conf = config.get(sub_dp)
         if sub_dp_conf and 'fetch_intervals' in sub_dp_conf and 'name' in sub_dp_conf:
-            kwargs = {'query_sql': sub_dp_conf['query_sql'], 'result_table': sub_dp_conf['result_table']}
-            timer_list.append(LoopTimer(int(sub_dp_conf['fetch_intervals']), 
-                functools.partial(fetch_timeout_handler, 
-                    sub_dp_conf['name'], 
-                    loop, 
-                    **kwargs)))
-
+            kwargs = {'query_sql': sub_dp_conf['query_sql'], 'handle_module': sub_dp_conf['handle_module']}
+            timer_list.append(LoopTimer(int(sub_dp_conf['fetch_intervals']), functools.partial(fetch_timeout_handler, sub_dp_conf['name'], loop, **kwargs)))
         if sub_dp_conf and 'forecast_intervals' in sub_dp_conf and 'name' in sub_dp_conf:
             timer_list.append(LoopTimer(int(sub_dp_conf['forecast_intervals']), functools.partial(forecast_timeout_handler, sub_dp_conf['name'], loop)))
 
@@ -81,8 +86,6 @@ if __name__ == "__main__":
     
     loop.add_signal_handler(signal.SIGTERM, functools.partial(signal_handler, signal.SIGTERM, loop))
     
-    loop.call_soon_threadsafe(fetch_data, loop)
-
     try:
         loop.run_forever()
     finally:

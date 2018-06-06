@@ -1,5 +1,7 @@
 import logging
 
+from lib.core.plugins import import_plugin, import_package, list_plugins
+
 log = logging.getLogger()
 
 def __init_day_rotate_logging(log_path, logname=None, log_level=logging.INFO, when="MIDNIGHT", backup_count=7):
@@ -30,3 +32,20 @@ def init_logging(logname="scheduler", log_level=logging.INFO):
     __init_day_rotate_logging('.')
 
     log.setLevel(log_level)
+
+def init_modules():
+    """Initializes plugins."""
+    log.debug("Importing modules...")
+
+    # Import all realtime_intrusion modules.
+    import modules.realtime_intrusion
+    import_package(modules.realtime_intrusion)
+
+    for category, entries in list_plugins().items():
+        log.debug("Imported \"%s\" modules:", category)
+
+        for entry in entries:
+            if entry == entries[-1]:
+                log.debug("\t `-- %s", entry.__name__)
+            else:
+                log.debug("\t |-- %s", entry.__name__)
