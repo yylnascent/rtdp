@@ -7,7 +7,7 @@ import signal
 import threading
 import time
 
-from lib.common.abstracts import CompetitorIntrusion
+from lib.common.abstracts import CommonETL
 from lib.common.exceptions import RTDPConfigurationError
 from lib.common.config import Config
 from lib.core.init import init_logging
@@ -16,8 +16,8 @@ log = logging.getLogger('main')
 
 def data_etl(**kwargs):
     handle_module = kwargs['handle_module']
-    import modules.realtime_intrusion
-    package = modules.realtime_intrusion
+    import modules.data_etl
+    package = modules.data_etl
     prefix = package.__name__ + "."
     for loader, name, ispkg in pkgutil.iter_modules(package.__path__, prefix):
         log.debug(name)
@@ -25,7 +25,7 @@ def data_etl(**kwargs):
             module = __import__(name, globals(), locals(), ["dummy"], 0)
 
     for name, value in inspect.getmembers(module):
-        if inspect.isclass(value) and not inspect.isabstract(value) and issubclass(value, CompetitorIntrusion) and value is not CompetitorIntrusion:
+        if inspect.isclass(value) and issubclass(value, CommonETL) and value is not CommonETL:
             log.debug("%s: %s."% (name, value))
             obj = value()
             obj.save_data(**obj.fetch_data(**kwargs))

@@ -1,4 +1,7 @@
-class CompetitorIntrusion(object):
+class CommonETL(object):
+    def __init__(self):
+        pass
+        
     def fetch_data(self, *args, **kwargs):
         raise NotImplementedError('please implemente fetch_data')
 

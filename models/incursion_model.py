@@ -18,3 +18,31 @@ class DBIndexCollectionStorageRT(Base):
     __table_args__ = (
         UniqueConstraint('idx_type', 'idx_name', 'idx_datetime'),
     )
+
+class DBIndexCollectionStorageDaily(Base):
+    __tablename__ = 'index_collection_storage_daily'
+
+    id = Column(INTEGER, primary_key=True)
+    idx_datetime = Column(DATETIME)
+    idx_type = Column(VARCHAR(64))   
+    idx_name = Column(VARCHAR(64))
+    value = Column(VARCHAR(64))
+    load_time = Column(TIMESTAMP)
+
+    __table_args__ = (
+        UniqueConstraint('idx_type', 'idx_name', 'idx_datetime'),
+    )
+
+class DBIndexCollectionStorageHourly(Base):
+    __tablename__ = 'index_collection_storage_hourly'
+
+    id = Column(INTEGER, primary_key=True)
+    idx_datetime = Column(DATETIME)
+    idx_type = Column(VARCHAR(64))   
+    idx_name = Column(VARCHAR(64))
+    value = Column(VARCHAR(64))
+    load_time = Column(TIMESTAMP)
+
+    __table_args__ = (
+        UniqueConstraint('idx_type', 'idx_name', 'idx_datetime'),
+    )
