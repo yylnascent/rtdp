@@ -3,13 +3,16 @@ import logging
 from lib.common.abstracts import CommonETL
 from lib.core.intrusion_handler import FineBIDBHandle
 
-log = logging.getLogger('intrusion_data')
+log = logging.getLogger('realtime_etl')
 
 class RealtimeETL(CommonETL):
+    def __init__(self):
+        self.__db_handler = FineBIDBHandle()
+
     def fetch_data(self, **kwargs):
         log.debug("read database begin")
         log.debug(kwargs)
-        ret = FineBIDBHandle().result_from_sql(kwargs['query_sql'])
+        ret = self.__db_handler.result_from_sql(kwargs['query_sql'])
         log.debug("read database end")
         kwargs.update({'result': ret})
         
@@ -24,5 +27,5 @@ class RealtimeETL(CommonETL):
             if not iresult['ds']:
                 log.debug('fetch None data')
                 break
-            FineBIDBHandle().update_index_collection_storage_rt(iresult['ds'], idx_type, idx_name, iresult['y'])
+            self.__db_handler.update_index_collection_storage_rt(iresult['ds'], idx_type, idx_name, iresult['y'])
         log.debug("save database end")

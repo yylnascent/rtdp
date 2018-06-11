@@ -1,12 +1,12 @@
 import inspect
 import logging
 import multiprocessing
-import os
 import pkgutil
 import schedule
 import signal
-import threading
 import time
+
+import modules.data_etl
 
 from lib.common.abstracts import CommonETL
 from lib.common.exceptions import RTDPConfigurationError
@@ -15,15 +15,16 @@ from lib.core.init import init_logging
 
 log = logging.getLogger('main')
 
+pending_results = []
+
 def data_etl(*args, **kwargs):
     handle_module = kwargs['handle_module']
-    import modules.data_etl
     package = modules.data_etl
     prefix = package.__name__ + "."
     for loader, name, ispkg in pkgutil.iter_modules(package.__path__, prefix):
-        log.debug(name)
         if name.endswith(handle_module):
             module = __import__(name, globals(), locals(), ["dummy"], 0)
+
 
     for name, value in inspect.getmembers(module):
         if inspect.isclass(value) and issubclass(value, CommonETL) and value is not CommonETL:
@@ -35,7 +36,8 @@ def signal_handler(signum):
     log.debug('received signal %d.' % signum)
 
 def process_job(*args, **kwargs):
-    pool.apply_async(data_etl, args, kwargs)
+    ret = pool.apply_async(data_etl, args, kwargs)
+    pending_results.append(ret)
 
 def fetch_timeout_handler(*args, **kwargs):
     data_etl(**kwargs)
@@ -89,12 +91,25 @@ if __name__ == "__main__":
 
     pool = multiprocessing.Pool(processes=4, initializer=init_worker,
                                 maxtasksperchild=1000)
-    
     try:
         while True:
+            # Pending results maintenance.
+            for ar in pending_results[:]:
+                if not ar.ready():
+                    continue
+
+                try:
+                    ar.get()
+                except Exception as e:
+                    log.critical("Exception in execute task: %s", e)
+
+                pending_results.remove(ar)
+
+                # obj.save_data(**data)
+
             schedule.run_pending()
             time.sleep(1)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt as exc:
         pool.terminate()
         raise
     finally:

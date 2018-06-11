@@ -1,11 +1,9 @@
-import functools
 import logging
-import time
 
 from lib.common.abstracts import CommonETL
 from lib.core.intrusion_handler import FineBIDBHandle
 
-log = logging.getLogger('intrusion_data')
+log = logging.getLogger('hourly_etl')
 
 class DailyETL(CommonETL):
     def __init__(self):
