@@ -1,6 +1,4 @@
-import functools
 import logging
-import time
 
 from lib.common.abstracts import CommonETL
 from lib.core.intrusion_handler import FineBIDBHandle
@@ -23,5 +21,8 @@ class RealtimeETL(CommonETL):
         module_tag = kwargs['module_tag']
         _, idx_type, idx_name = module_tag.split('_', 2)
         for iresult in kwargs['result']:
+            if not iresult['ds']:
+                log.debug('fetch None data')
+                break
             FineBIDBHandle().update_index_collection_storage_rt(iresult['ds'], idx_type, idx_name, iresult['y'])
         log.debug("save database end")

@@ -1,5 +1,6 @@
 import inspect
 import logging
+import multiprocessing
 import os
 import pkgutil
 import schedule
@@ -14,7 +15,7 @@ from lib.core.init import init_logging
 
 log = logging.getLogger('main')
 
-def data_etl(**kwargs):
+def data_etl(*args, **kwargs):
     handle_module = kwargs['handle_module']
     import modules.data_etl
     package = modules.data_etl
@@ -33,9 +34,8 @@ def data_etl(**kwargs):
 def signal_handler(signum):
     log.debug('received signal %d.' % signum)
 
-def thread_job(job_func, *args, **kwargs):
-    job_thread = threading.Thread(target=job_func, args=args, kwargs=kwargs)
-    job_thread.start()
+def process_job(*args, **kwargs):
+    pool.apply_async(data_etl, args, kwargs)
 
 def fetch_timeout_handler(*args, **kwargs):
     data_etl(**kwargs)
@@ -50,7 +50,6 @@ def init_task(conf):
     main_conf = config.get('main')
     log.debug('main dp_list %s' % main_conf['dp_list'])
 
-    timer_list = []
     for sub_dp in main_conf['dp_list'].split(','):
         log.debug('sub dp %s' % sub_dp)
         sub_dp_conf = config.get(sub_dp)
@@ -70,16 +69,16 @@ def init_task(conf):
                 log.debug('fetch_intervals: %s, at: %s, handle_module: %s.' % (fetch_intervals, at, handle_module))
                 if at and handle_module:
                     kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag':module}
-                    schedule.every().day.at(at).do(thread_job, data_etl, **kwargs)
+                    schedule.every().day.at(at).do(process_job, data_etl, **kwargs)
                 elif fetch_intervals and handle_module:
                     kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag':module}
-                    schedule.every(int(fetch_intervals)).seconds.do(thread_job, data_etl, **kwargs)
+                    schedule.every(int(fetch_intervals)).seconds.do(process_job, data_etl, **kwargs)
                 else:
                     log.error('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module' % (sub_dp, module))
                     raise RTDPConfigurationError('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module' % (sub_dp, module))    
 
-    return timer_list
-
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 if __name__ == "__main__":
     init_logging(logname='realtime_forecast', log_level=logging.DEBUG)
@@ -87,7 +86,16 @@ if __name__ == "__main__":
     config = Config(file_name="dataprocess")
 
     init_task(config)
+
+    pool = multiprocessing.Pool(processes=4, initializer=init_worker,
+                                maxtasksperchild=1000)
     
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    try:
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except KeyboardInterrupt as e:
+        pool.terminate()
+        raise
+    finally:
+        pool.join()

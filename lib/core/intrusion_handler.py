@@ -32,6 +32,9 @@ class FineBIDBHandle(object):
 
         self.session = get_tm_session(get_session_factory(self.engine), self.__transaction_manager)
 
+        Base.metadata.bind = self.engine
+        Base.metadata.create_all(self.engine)
+
     def result_from_sql(self, query_sql):
         ret = None
         if query_sql:

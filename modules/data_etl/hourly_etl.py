@@ -26,5 +26,8 @@ class DailyETL(CommonETL):
         module_tag = kwargs['module_tag']
         _, idx_type, idx_name = module_tag.split('_', 2)
         for iresult in kwargs['result']:
+            if not iresult['ds']:
+                log.debug('fetch None data')
+                break
             self.__db_handler.update_index_collection_storage_hourly(iresult['ds'], idx_type, idx_name, iresult['y'])
         log.debug("save database end")
