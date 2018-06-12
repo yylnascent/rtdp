@@ -12,7 +12,7 @@ class RealtimeETL(CommonETL):
     def fetch_data(self, **kwargs):
         log.debug("read database begin")
         log.debug(kwargs)
-        ret = self.__db_handler.result_from_sql(kwargs['query_sql'])
+        ret = self.__db_handler.result_from_sql(self.format_sql(kwargs['query_sql'], **kwargs))
         log.debug("read database end")
         kwargs.update({'result': ret})
         
