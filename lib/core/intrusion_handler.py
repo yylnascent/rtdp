@@ -1,4 +1,8 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
+"""
+   FineBI Database Handler
+"""
+
 import logging
 import transaction
 
@@ -41,16 +45,16 @@ class FineBIDBHandle(object):
 
         return ret
 
-    def update_index_collection_storage_rt(self, idx_datetime, idx_type, idx_name, value):
+    def __update_index_table(self, model_name, idx_datetime, idx_type, idx_name, value):
         # overwrite it if existed, otherwise insert one.
-        ret = self.session.query(DBIndexCollectionStorageRT).\
-              filter(DBIndexCollectionStorageRT.idx_datetime==idx_datetime).\
-              filter(DBIndexCollectionStorageRT.idx_type==idx_type).\
-              filter(DBIndexCollectionStorageRT.idx_name==idx_name).\
+        ret = self.session.query(model_name).\
+              filter(model_name.idx_datetime==idx_datetime).\
+              filter(model_name.idx_type==idx_type).\
+              filter(model_name.idx_name==idx_name).\
               first()
 
         if not ret:
-            ret = DBIndexCollectionStorageRT()
+            ret = model_name()
             ret.idx_datetime = idx_datetime
             ret.idx_type = idx_type
             ret.idx_name = idx_name
@@ -61,61 +65,17 @@ class FineBIDBHandle(object):
 
         try:
             self.session.flush()
-            log.debug('update_index_collection_storage_rt success.')
+            log.debug('__update_index_table success.')
             return True
         except SQLAlchemyError as exc:
-            log.error('update_index_collection_storage_rt fail, error msg: %s' % exc)
+            log.error('__update_index_table fail, error msg: %s', exc)
             return False
+
+    def update_index_collection_storage_rt(self, idx_datetime, idx_type, idx_name, value):
+        return self.__update_index_table(DBIndexCollectionStorageRT, idx_datetime, idx_type, idx_name, value)
 
     def update_index_collection_storage_daily(self, idx_datetime, idx_type, idx_name, value):
-        # overwrite it if existed, otherwise insert one.
-        ret = self.session.query(DBIndexCollectionStorageDaily).\
-              filter(DBIndexCollectionStorageDaily.idx_datetime == idx_datetime).\
-              filter(DBIndexCollectionStorageDaily.idx_type == idx_type).\
-              filter(DBIndexCollectionStorageDaily.idx_name == idx_name).\
-              first()
-
-        if not ret:
-            ret = DBIndexCollectionStorageDaily()
-            ret.idx_datetime = idx_datetime
-            ret.idx_type = idx_type
-            ret.idx_name = idx_name
-            ret.value = value
-            self.session.add(ret)
-        else:
-            ret.value = value
-
-        try:
-            self.session.flush()
-            log.debug('update_index_collection_storage_daily success.')
-            return True
-        except SQLAlchemyError as exc:
-            log.error('update_index_collection_storage_daily fail, error msg: %s' % exc)
-            return False
+        return self.__update_index_table(DBIndexCollectionStorageDaily, idx_datetime, idx_type, idx_name, value)
 
     def update_index_collection_storage_hourly(self, idx_datetime, idx_type, idx_name, value):
-        # overwrite it if existed, otherwise insert one.
-        ret = self.session.query(DBIndexCollectionStorageHourly).\
-              filter(DBIndexCollectionStorageHourly.idx_datetime == idx_datetime).\
-              filter(DBIndexCollectionStorageHourly.idx_type == idx_type).\
-              filter(DBIndexCollectionStorageHourly.idx_name == idx_name).\
-              first()
-
-        if not ret:
-            ret = DBIndexCollectionStorageHourly()
-            ret.idx_datetime = idx_datetime
-            ret.idx_type = idx_type
-            ret.idx_name = idx_name
-            ret.value = value
-            self.session.add(ret)
-        else:
-            ret.value = value
-
-        try:
-            self.session.flush()
-            log.debug('update_index_collection_storage_hourly success.')
-            return True
-        except SQLAlchemyError as exc:
-            log.error('update_index_collection_storage_hourly fail, error msg: {}'.format(exc))
-            return False
-
+        return self.__update_index_table(DBIndexCollectionStorageHourly, idx_datetime, idx_type, idx_name, value)

@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+    Database table model
+"""
+
 from models.meta import Base
 
 from datetime import datetime

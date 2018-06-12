@@ -40,19 +40,12 @@ class LoopTimer(Timer):
         self._exception_handler = handler
 
     def call_exception_handler(self, context):
-      """Call the current event loop's exception handler.
+      """Call the current loop timer's exception handler.
       The context argument is a dict containing the following keys:
       - 'message': Error message;
       - 'exception' (optional): Exception object;
-      - 'future' (optional): Future instance;
-      - 'handle' (optional): Handle instance;
-      - 'protocol' (optional): Protocol instance;
-      - 'transport' (optional): Transport instance;
-      - 'socket' (optional): Socket instance;
-      - 'asyncgen' (optional): Asynchronous generator that caused
-                               the exception.
       New keys maybe introduced in the future.
-      Note: do not overload this method in an event loop subclass.
+      Note: do not overload this method in an loop timer subclass.
       For custom exception handling, use the
       `set_exception_handler()` method.
       """
@@ -62,6 +55,6 @@ class LoopTimer(Timer):
           except Exception as exc:
               # Exception in the user set custom exception handler.
               log.error('Exception in default exception handler '
-                           'while handling an unexpected error '
-                           'in custom exception handler',
-                           exc_info=True)
+                        'while handling an unexpected error '
+                        'in custom exception handler',
+                        exc_info=True)
