@@ -44,10 +44,10 @@ def process_job(*args, **kwargs):
 
 def init_task(conf):
     main_conf = conf.get('main')
-    log.debug('main dp_list %s.', main_conf['dp_list'])
+    log.info('main dp_list %s.', main_conf['dp_list'])
 
     for sub_dp in main_conf['dp_list'].split(','):
-        log.debug('sub dp %s.', sub_dp)
+        log.info('sub dp %s.', sub_dp)
         sub_dp_conf = conf.get(sub_dp)
         base_fetch_intervals = sub_dp_conf['fetch_intervals'] if 'fetch_intervals' in sub_dp_conf else None
         base_handle_module = sub_dp_conf['handle_module'] if 'handle_module' in sub_dp_conf else None
@@ -57,22 +57,20 @@ def init_task(conf):
             if module == '':
                 continue
                 
-            log.debug('sub module %s.', module)
+            log.info('sub module %s.', module)
             module_name_conf = conf.get(module)
             if module_name_conf:
                 fetch_intervals = module_name_conf['fetch_intervals'] if 'fetch_intervals' in module_name_conf else base_fetch_intervals
                 at = module_name_conf['at'] if 'at' in module_name_conf else base_at
                 handle_module = module_name_conf['handle_module'] if 'handle_module' in module_name_conf else base_handle_module
                 times = module_name_conf['brush_history'] if 'brush_history' in module_name_conf else base_times
-                log.debug('fetch_intervals: %s, at: %s, handle_module: %s.', fetch_intervals, at, handle_module)
-                if brush_history:
-                    kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': str(times)}
-                else:
-                    kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': '1'}
+                log.info('fetch_intervals: %s, at: %s, handle_module: %s.', fetch_intervals, at, handle_module)
 
                 if brush_history:
+                    kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': str(times)}
                     process_job(data_etl, **kwargs)
                 else:
+                    kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': '1'}
                     if at and handle_module:
                         schedule.every().day.at(at).do(process_job, data_etl, **kwargs)
                     elif fetch_intervals and handle_module:
@@ -85,20 +83,20 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("-v", "--verbose", help="Display debug infomations", action="store_true", required=False)
     parser.add_argument("-p", "--parallel", help="Number of parallel processes.", type=int, required=False, default=4)
-    parser.add_argument("-b", "--brush", help="Brush history data", action="store_true", required=False)
+    parser.add_argument("-b", "--brush-history", help="Brush history data", action="store_true", required=False)
 
     args = parser.parse_args()
 
-    if args.brush:
+    if args.brush_history:
         brush_history = True
 
     if args.verbose:
-        init_logging(logname='realtime_forecast', log_level=logging.DEBUG)
+        init_logging(logname='rtdp', log_level=logging.DEBUG)
     else:
-        init_logging(logname='realtime_forecast', log_level=logging.INFO)
+        init_logging(logname='rtdp', log_level=logging.INFO)
 
     if brush_history:
         config = Config(file_name="dataprocess-brushhistory")
@@ -109,6 +107,7 @@ if __name__ == "__main__":
                                 maxtasksperchild=1000)
 
     init_task(config)
+
     try:
         while True:
             # 迭代复制的列表
@@ -133,6 +132,6 @@ if __name__ == "__main__":
         pool.terminate()
     except KeyboardInterrupt as exc:
         pool.terminate()
-        raise
+        raise exc
     finally:
         pool.join()

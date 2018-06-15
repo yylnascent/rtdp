@@ -1,15 +1,27 @@
 import logging
-
-from lib.core.plugins import import_plugin, import_package, list_plugins
+import logging.handlers
+import os
+import sys
 
 log = logging.getLogger()
+
+def makedir(path):
+    if os.path.exists(path):
+        return
+
+    try:
+        os.makedirs(path)
+    except OSError as exception:  # Python >2.5
+        if exception.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            sys.stderr.write("create log_path failed: {}".format(path))
 
 def __init_day_rotate_logging(log_path, logname=None, log_level=logging.INFO, when="MIDNIGHT", backup_count=7):
     """
     init day rotate logging
     @return:
     """
-    log = logging.getLogger()
     formatter = logging.Formatter("%(asctime)s [%(name)s:%(lineno)d][%(thread)d] %(levelname)s: %(message)s")
 
     if logname and log_path:
@@ -29,9 +41,7 @@ def __init_day_rotate_logging(log_path, logname=None, log_level=logging.INFO, wh
 
 def init_logging(logname="scheduler", log_level=logging.INFO):
     """Initializes logging."""
-    __init_day_rotate_logging('.')
-
-    log.setLevel(log_level)
+    __init_day_rotate_logging('.', logname, log_level)
 
 def init_modules():
     """Initializes plugins."""

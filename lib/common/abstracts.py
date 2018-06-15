@@ -25,7 +25,7 @@ class CommonETL(object):
                 log.debug('argkey %s, argvalue %s.', argkey, argvalue)
                 sql = sql.replace('${' + argkey + '}', argvalue)
 
-        log.debug('formated sql: %s.', sql)
+        log.info('formated sql: %s.', sql)
 
         return sql
         
