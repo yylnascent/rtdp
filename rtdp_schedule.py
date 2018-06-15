@@ -19,6 +19,7 @@ log = logging.getLogger('main')
 brush_history = False
 
 pending_results = []
+pool = None
 
 def data_etl(*args, **kwargs):
     handle_module = kwargs['handle_module']
@@ -68,13 +69,17 @@ def init_task(conf):
                     kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': str(times)}
                 else:
                     kwargs = {'query_sql': module_name_conf['query_sql'], 'handle_module': handle_module, 'module_tag': module, 'TIMES': '1'}
-                if at and handle_module:
-                    schedule.every().day.at(at).do(process_job, data_etl, **kwargs)
-                elif fetch_intervals and handle_module:
-                    schedule.every(int(fetch_intervals)).seconds.do(process_job, data_etl, **kwargs)
+
+                if brush_history:
+                    process_job(data_etl, **kwargs)
                 else:
-                    log.error('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module.', sub_dp, module)
-                    raise RTDPConfigurationError('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module' % (sub_dp, module))    
+                    if at and handle_module:
+                        schedule.every().day.at(at).do(process_job, data_etl, **kwargs)
+                    elif fetch_intervals and handle_module:
+                        schedule.every(int(fetch_intervals)).seconds.do(process_job, data_etl, **kwargs)
+                    else:
+                        log.error('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module.', sub_dp, module)
+                        raise RTDPConfigurationError('dataprocess <%s>\'s <%s> module does not specify fetch_intervals or handle_module' % (sub_dp, module))    
 
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -95,12 +100,15 @@ if __name__ == "__main__":
     else:
         init_logging(logname='realtime_forecast', log_level=logging.INFO)
 
-    config = Config(file_name="dataprocess")
-
-    init_task(config)
+    if brush_history:
+        config = Config(file_name="dataprocess-brushhistory")
+    else:
+        config = Config(file_name="dataprocess")
 
     pool = multiprocessing.Pool(processes=args.parallel, initializer=init_worker,
                                 maxtasksperchild=1000)
+
+    init_task(config)
     try:
         while True:
             # 迭代复制的列表
@@ -116,8 +124,13 @@ if __name__ == "__main__":
                 # 从原列表里删除
                 pending_results.remove(ar)
 
-            schedule.run_pending()
-            time.sleep(1)
+            if not brush_history:
+                schedule.run_pending()
+                time.sleep(1)
+            else:
+                if not pending_results:
+                    break
+        pool.terminate()
     except KeyboardInterrupt as exc:
         pool.terminate()
         raise
